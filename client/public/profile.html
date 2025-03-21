@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Zen Mental Health Support App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="js/api.js"></script>
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f5f7fa;
+        color: #333;
+      }
+      .navbar {
+        background-color: #6a5acd;
+      }
+      .navbar-brand, .nav-link {
+        color: white !important;
+      }
+      .card {
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        transition: transform 0.3s;
+      }
+      .card:hover {
+        transform: translateY(-5px);
+      }
+      .profile-header {
+        background-color: #6a5acd;
+        color: white;
+        padding: 30px 0;
+        border-radius: 15px 15px 0 0;
+        text-align: center;
+      }
+      .profile-img {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 5px solid white;
+        margin-bottom: 15px;
+      }
+      .profile-stats {
+        display: flex;
+        justify-content: space-around;
+        margin: 20px 0;
+      }
+      .stat-item {
+        text-align: center;
+      }
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+      }
+      .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+      }
+      .form-control {
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 15px;
+      }
+      .btn-primary {
+        background-color: #6a5acd;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .btn-primary:hover {
+        background-color: #5949b9;
+      }
+      .alert {
+        border-radius: 10px;
+        margin-bottom: 15px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">Zen</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="index.html#chatbot">Chatbot</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="index.html#journal">Journal</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="index.html#mood-tracker">Mood Tracker</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="index.html#breathing">Breathing Exercise</a>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle active" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span id="userName">User</span>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <li><a class="dropdown-item active" href="profile.html">Profile</a></li>
+                <li><a class="dropdown-item" href="settings.html">Settings</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" id="logoutBtn">Logout</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mt-4">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="profile-header">
+              <img src="https://via.placeholder.com/150" alt="Profile" class="profile-img" id="profileImage">
+              <h2 id="profileName">User Name</h2>
+              <p id="profileEmail">user@example.com</p>
+            </div>
+            <div class="card-body">
+              <div class="profile-stats">
+                <div class="stat-item">
+                  <div class="stat-value" id="journalCount">0</div>
+                  <div class="stat-label">Journal Entries</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value" id="moodCount">0</div>
+                  <div class="stat-label">Mood Logs</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value" id="dayCount">0</div>
+                  <div class="stat-label">Days Active</div>
+                </div>
+              </div>
+              
+              <hr>
+              
+              <h4>Edit Profile</h4>
+              <div class="alert alert-success" id="success-message" role="alert"></div>
+              <div class="alert alert-danger" id="error-message" role="alert"></div>
+              
+              <form id="profile-form">
+                <div class="mb-3">
+                  <label for="name" class="form-label">Full Name</label>
+                  <input type="text" class="form-control" id="name" placeholder="Your name">
+                </div>
+                <div class="mb-3">
+                  <label for="bio" class="form-label">Bio</label>
+                  <textarea class="form-control" id="bio" rows="3" placeholder="Tell us about yourself"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="profilePicture" class="form-label">Profile Picture URL</label>
+                  <input type="url" class="form-control" id="profilePicture" placeholder="https://example.com/your-image.jpg">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const token = localStorage.getItem('token');
+        const userJson = localStorage.getItem('user');
+        
+        // Check if user is authenticated
+        if (!token) {
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        // Display user information
+        if (userJson) {
+          try {
+            const user = JSON.parse(userJson);
+            
+            // Update username in dropdown
+            document.getElementById('userName').textContent = user.name;
+            
+            // Update profile header
+            document.getElementById('profileName').textContent = user.name;
+            document.getElementById('profileEmail').textContent = user.email;
+            
+            // Update form fields
+            document.getElementById('name').value = user.name;
+            
+            if (user.bio) {
+              document.getElementById('bio').value = user.bio;
+            }
+            
+            if (user.profilePicture) {
+              document.getElementById('profilePicture').value = user.profilePicture;
+              document.getElementById('profileImage').src = user.profilePicture;
+            }
+            
+            // Fetch user stats
+            fetchUserStats(token);
+          } catch (error) {
+            console.error('Error parsing user data:', error);
+          }
+        }
+        
+        // Handle logout
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // Clear local storage
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          
+          // Redirect to login page
+          window.location.href = 'login.html';
+        });
+        
+        // Handle profile form submission
+        document.getElementById('profile-form').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          const nameInput = document.getElementById('name');
+          const bioInput = document.getElementById('bio');
+          const profilePictureInput = document.getElementById('profilePicture');
+          
+          const successMessage = document.getElementById('success-message');
+          const errorMessage = document.getElementById('error-message');
+          
+          // Reset messages
+          successMessage.style.display = 'none';
+          errorMessage.style.display = 'none';
+          
+          try {
+            const response = await window.mindfulmeAPI.auth.updateProfile({
+              name: nameInput.value,
+              bio: bioInput.value,
+              profilePicture: profilePictureInput.value
+            }, token);
+            
+            // Update local storage
+            localStorage.setItem('user', JSON.stringify(response.data));
+            
+            // Update UI
+            document.getElementById('userName').textContent = response.data.name;
+            document.getElementById('profileName').textContent = response.data.name;
+            
+            if (response.data.profilePicture) {
+              document.getElementById('profileImage').src = response.data.profilePicture;
+            }
+            
+            // Show success message
+            successMessage.textContent = 'Profile updated successfully!';
+            successMessage.style.display = 'block';
+            
+            // Hide success message after 3 seconds
+            setTimeout(() => {
+              successMessage.style.display = 'none';
+            }, 3000);
+          } catch (error) {
+            // Display error message
+            errorMessage.textContent = error.message || 'Error updating profile. Please try again.';
+            errorMessage.style.display = 'block';
+          }
+        });
+      });
+      
+      // Function to fetch user statistics
+      async function fetchUserStats(token) {
+        try {
+          // Fetch journal count
+          const journalsResponse = await window.mindfulmeAPI.journal.getJournals(token);
+          document.getElementById('journalCount').textContent = journalsResponse.count;
+          
+          // Fetch mood count
+          const moodsResponse = await window.mindfulmeAPI.mood.getMoods(token);
+          document.getElementById('moodCount').textContent = moodsResponse.count;
+          
+          // Calculate days active (placeholder - would typically be calculated on the server)
+          const user = JSON.parse(localStorage.getItem('user'));
+          const createdDate = new Date(user.createdAt);
+          const today = new Date();
+          const diffTime = Math.abs(today - createdDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          document.getElementById('dayCount').textContent = diffDays;
+        } catch (error) {
+          console.error('Error fetching user stats:', error);
+        }
+      }
+    </script>
+  </body>
+</html> 

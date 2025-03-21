@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breathing Exercise - Zen Mental Health Support App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="js/api.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .navbar {
+            background-color: #6a5acd;
+        }
+        .navbar-brand, .nav-link {
+            color: white !important;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        /* Breathing animation styles */
+        .breathing-circle {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background-color: #6a5acd;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            transition: transform 4s ease-in-out, background-color 4s ease-in-out;
+            box-shadow: 0 0 30px rgba(106, 90, 205, 0.6);
+        }
+        .breathing-circle.inhale {
+            transform: scale(1.4);
+            background-color: #8071d5;
+        }
+        .breathing-circle.hold {
+            background-color: #5a4bb8;
+        }
+        .breathing-circle.exhale {
+            transform: scale(1);
+            background-color: #483d95;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .timer-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #6a5acd;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .exercise-controls button {
+            margin: 0 10px;
+        }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="landing.html">Zen</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="chatbot.html">Chatbot</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="journal.html">Journal</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="mood.html">Mood Tracker</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="breathing.html">Breathing Exercise</a>
+                    </li>
+                    <li class="nav-item dropdown user-dropdown" style="display: none;">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span id="userName">User</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+                            <li><a class="dropdown-item" href="settings.html">Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="logoutBtn">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12 text-center mb-4">
+                <h1>Breathing Exercise</h1>
+                <p class="lead">Practice mindful breathing to reduce stress and increase focus</p>
+            </div>
+        </div>
+
+        <!-- Breathing Exercise Section -->
+        <section id="breathing-exercise" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Guided Breathing</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6 mx-auto">
+                            <div class="form-group mb-3">
+                                <label for="breathing-pattern" class="form-label">Select Breathing Pattern</label>
+                                <select class="form-select" id="breathing-pattern">
+                                    <option value="4-4-4-4">Box Breathing (4-4-4-4)</option>
+                                    <option value="4-7-8">Relaxing Breath (4-7-8)</option>
+                                    <option value="5-2-5">Calming Breath (5-2-5)</option>
+                                    <option value="6-3-6-3">Square Breathing (6-3-6-3)</option>
+                                    <option value="custom">Custom Pattern</option>
+                                </select>
+                            </div>
+                            <div id="custom-pattern-inputs" style="display: none;">
+                                <div class="row g-2">
+                                    <div class="col">
+                                        <label class="form-label">Inhale</label>
+                                        <input type="number" class="form-control" id="custom-inhale" min="1" max="10" value="4">
+                                    </div>
+                                    <div class="col">
+                                        <label class="form-label">Hold</label>
+                                        <input type="number" class="form-control" id="custom-hold-1" min="0" max="10" value="4">
+                                    </div>
+                                    <div class="col">
+                                        <label class="form-label">Exhale</label>
+                                        <input type="number" class="form-control" id="custom-exhale" min="1" max="10" value="4">
+                                    </div>
+                                    <div class="col">
+                                        <label class="form-label">Hold</label>
+                                        <input type="number" class="form-control" id="custom-hold-2" min="0" max="10" value="4">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6 mx-auto">
+                            <div class="form-group mb-3">
+                                <label for="exercise-duration" class="form-label">Exercise Duration (minutes)</label>
+                                <select class="form-select" id="exercise-duration">
+                                    <option value="1">1 minute</option>
+                                    <option value="2">2 minutes</option>
+                                    <option value="3" selected>3 minutes</option>
+                                    <option value="5">5 minutes</option>
+                                    <option value="10">10 minutes</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center exercise-controls mb-4">
+                        <button class="btn btn-primary btn-lg" id="start-btn">Start Exercise</button>
+                        <button class="btn btn-secondary btn-lg" id="pause-btn" style="display: none;">Pause</button>
+                        <button class="btn btn-danger btn-lg" id="stop-btn" style="display: none;">Stop</button>
+                    </div>
+                    
+                    <div id="exercise-container" style="display: none;">
+                        <div class="timer-display mb-3" id="timer-display">03:00</div>
+                        <div class="text-center mb-4">
+                            <h3 id="instruction-text" class="fade-in">Prepare to begin...</h3>
+                        </div>
+                        <div class="breathing-circle" id="breathing-circle">
+                            <div id="circle-text">Ready</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits Section -->
+        <section id="breathing-benefits" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h3>Benefits of Breathing Exercises</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h5>Physical Benefits</h5>
+                            <ul>
+                                <li>Reduces blood pressure</li>
+                                <li>Improves immune function</li>
+                                <li>Increases energy levels</li>
+                                <li>Relaxes muscles and reduces tension</li>
+                                <li>Improves sleep quality</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>Mental Benefits</h5>
+                            <ul>
+                                <li>Reduces stress and anxiety</li>
+                                <li>Improves focus and concentration</li>
+                                <li>Enhances emotional regulation</li>
+                                <li>Promotes mindfulness</li>
+                                <li>Creates mental clarity</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>Best Practices</h5>
+                            <ul>
+                                <li>Find a quiet, comfortable space</li>
+                                <li>Practice at the same time daily</li>
+                                <li>Start with shorter sessions</li>
+                                <li>Breathe through your nose when possible</li>
+                                <li>Focus on the sensations of breathing</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Breathing Patterns -->
+        <section id="breathing-patterns" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3>Popular Breathing Patterns</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <h5>Box Breathing (4-4-4-4)</h5>
+                            <p>Used by Navy SEALs to maintain calm and focus in high-stress situations:</p>
+                            <ol>
+                                <li>Inhale for 4 seconds</li>
+                                <li>Hold for 4 seconds</li>
+                                <li>Exhale for 4 seconds</li>
+                                <li>Hold for 4 seconds</li>
+                            </ol>
+                            <p><strong>Good for:</strong> Stress reduction, focus, concentration</p>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <h5>4-7-8 Breathing (Relaxing Breath)</h5>
+                            <p>Developed by Dr. Andrew Weil, acts as a natural tranquilizer:</p>
+                            <ol>
+                                <li>Inhale quietly through nose for 4 seconds</li>
+                                <li>Hold breath for 7 seconds</li>
+                                <li>Exhale completely through mouth for 8 seconds</li>
+                            </ol>
+                            <p><strong>Good for:</strong> Falling asleep, anxiety relief</p>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <h5>Calming Breath (5-2-5)</h5>
+                            <p>Simple pattern that's easy to remember:</p>
+                            <ol>
+                                <li>Inhale for 5 seconds</li>
+                                <li>Hold for 2 seconds</li>
+                                <li>Exhale for 5 seconds</li>
+                            </ol>
+                            <p><strong>Good for:</strong> Everyday stress, quick calm</p>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <h5>Square Breathing (6-3-6-3)</h5>
+                            <p>A variation of box breathing with longer inhales and exhales:</p>
+                            <ol>
+                                <li>Inhale for 6 seconds</li>
+                                <li>Hold for 3 seconds</li>
+                                <li>Exhale for 6 seconds</li>
+                                <li>Hold for 3 seconds</li>
+                            </ol>
+                            <p><strong>Good for:</strong> Deep relaxation, mindfulness</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Zen Mental Wellness</h5>
+                    <p>Your companion for mental wellness and self-care.</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="landing.html" class="text-white">Home</a></li>
+                        <li><a href="chatbot.html" class="text-white">Chatbot</a></li>
+                        <li><a href="journal.html" class="text-white">Journal</a></li>
+                        <li><a href="mood.html" class="text-white">Mood Tracker</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Connect</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-white">Contact Us</a></li>
+                        <li><a href="#" class="text-white">Privacy Policy</a></li>
+                        <li><a href="#" class="text-white">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12 text-center">
+                    <p class="mb-0">© 2025 Zen Wellness. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DOM Elements
+        const breathingPattern = document.getElementById('breathing-pattern');
+        const customPatternInputs = document.getElementById('custom-pattern-inputs');
+        const exerciseDuration = document.getElementById('exercise-duration');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const exerciseContainer = document.getElementById('exercise-container');
+        const timerDisplay = document.getElementById('timer-display');
+        const instructionText = document.getElementById('instruction-text');
+        const breathingCircle = document.getElementById('breathing-circle');
+        const circleText = document.getElementById('circle-text');
+        
+        // Variables
+        let timer;
+        let remainingTime = 180; // Default 3 minutes
+        let isPaused = false;
+        let currentPhase = 'ready';
+        let breathingPhases = [];
+        let currentPhaseIndex = 0;
+        let phaseTimer;
+        let isExerciseRunning = false;
+        
+        // Show/hide custom pattern inputs
+        breathingPattern.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customPatternInputs.style.display = 'block';
+            } else {
+                customPatternInputs.style.display = 'none';
+            }
+        });
+        
+        // Start button
+        startBtn.addEventListener('click', function() {
+            if (isExerciseRunning) return;
+            
+            // Set up the exercise
+            setupExercise();
+            
+            // Show exercise elements
+            exerciseContainer.style.display = 'block';
+            startBtn.style.display = 'none';
+            pauseBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'inline-block';
+            
+            // Start the exercise
+            startExercise();
+        });
+        
+        // Pause button
+        pauseBtn.addEventListener('click', function() {
+            if (isPaused) {
+                // Resume
+                isPaused = false;
+                pauseBtn.textContent = 'Pause';
+                startTimer();
+                startPhaseTimer();
+            } else {
+                // Pause
+                isPaused = true;
+                pauseBtn.textContent = 'Resume';
+                clearInterval(timer);
+                clearInterval(phaseTimer);
+            }
+        });
+        
+        // Stop button
+        stopBtn.addEventListener('click', function() {
+            stopExercise();
+        });
+        
+        // Setup exercise duration and breathing pattern
+        function setupExercise() {
+            const durationMinutes = parseInt(exerciseDuration.value);
+            remainingTime = durationMinutes * 60;
+            updateTimerDisplay();
+            
+            // Get breathing pattern
+            let pattern = breathingPattern.value;
+            let inhale, hold1, exhale, hold2;
+            
+            if (pattern === 'custom') {
+                inhale = parseInt(document.getElementById('custom-inhale').value);
+                hold1 = parseInt(document.getElementById('custom-hold-1').value);
+                exhale = parseInt(document.getElementById('custom-exhale').value);
+                hold2 = parseInt(document.getElementById('custom-hold-2').value);
+            } else {
+                const parts = pattern.split('-');
+                inhale = parseInt(parts[0]);
+                
+                if (parts.length === 3) {
+                    // Pattern like 4-7-8
+                    hold1 = parseInt(parts[1]);
+                    exhale = parseInt(parts[2]);
+                    hold2 = 0;
+                } else if (parts.length === 4) {
+                    // Pattern like 4-4-4-4
+                    hold1 = parseInt(parts[1]);
+                    exhale = parseInt(parts[2]);
+                    hold2 = parseInt(parts[3]);
+                }
+            }
+            
+            // Create breathing phases array
+            breathingPhases = [];
+            
+            // Add inhale phase
+            breathingPhases.push({
+                type: 'inhale',
+                duration: inhale,
+                text: 'Breathe In',
+                class: 'inhale'
+            });
+            
+            // Add hold phase if duration > 0
+            if (hold1 > 0) {
+                breathingPhases.push({
+                    type: 'hold1',
+                    duration: hold1,
+                    text: 'Hold',
+                    class: 'hold'
+                });
+            }
+            
+            // Add exhale phase
+            breathingPhases.push({
+                type: 'exhale',
+                duration: exhale,
+                text: 'Breathe Out',
+                class: 'exhale'
+            });
+            
+            // Add second hold phase if duration > 0
+            if (hold2 > 0) {
+                breathingPhases.push({
+                    type: 'hold2',
+                    duration: hold2,
+                    text: 'Hold',
+                    class: 'hold'
+                });
+            }
+            
+            currentPhaseIndex = 0;
+            isExerciseRunning = true;
+        }
+        
+        // Start the exercise
+        function startExercise() {
+            startTimer();
+            startBreathingCycle();
+        }
+        
+        // Stop exercise
+        function stopExercise() {
+            clearInterval(timer);
+            clearInterval(phaseTimer);
+            isExerciseRunning = false;
+            isPaused = false;
+            
+            // Reset UI
+            exerciseContainer.style.display = 'none';
+            startBtn.style.display = 'inline-block';
+            pauseBtn.style.display = 'none';
+            stopBtn.style.display = 'none';
+            pauseBtn.textContent = 'Pause';
+            
+            // Reset breathing circle
+            breathingCircle.className = 'breathing-circle';
+            circleText.textContent = 'Ready';
+        }
+        
+        // Start timer
+        function startTimer() {
+            clearInterval(timer);
+            timer = setInterval(function() {
+                if (remainingTime <= 0) {
+                    completeExercise();
+                    return;
+                }
+                
+                remainingTime--;
+                updateTimerDisplay();
+            }, 1000);
+        }
+        
+        // Update timer display
+        function updateTimerDisplay() {
+            const minutes = Math.floor(remainingTime / 60);
+            const seconds = remainingTime % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Start breathing cycle
+        function startBreathingCycle() {
+            // Reset phase index if needed
+            if (currentPhaseIndex >= breathingPhases.length) {
+                currentPhaseIndex = 0;
+            }
+            
+            // Start current phase
+            startPhase(breathingPhases[currentPhaseIndex]);
+        }
+        
+        // Start current breathing phase
+        function startPhase(phase) {
+            // Update UI
+            instructionText.className = 'fade-in';
+            instructionText.textContent = phase.text;
+            
+            breathingCircle.className = 'breathing-circle';
+            // Small delay to ensure transition works
+            setTimeout(() => {
+                breathingCircle.classList.add(phase.class);
+            }, 50);
+            
+            circleText.textContent = phase.text;
+            
+            // Start phase timer
+            let phaseDuration = phase.duration;
+            updatePhaseCounter(phaseDuration);
+            
+            startPhaseTimer(phaseDuration);
+        }
+        
+        // Start phase timer
+        function startPhaseTimer(duration) {
+            let timeLeft = duration;
+            
+            clearInterval(phaseTimer);
+            phaseTimer = setInterval(function() {
+                timeLeft--;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(phaseTimer);
+                    currentPhaseIndex++;
+                    startBreathingCycle();
+                } else {
+                    updatePhaseCounter(timeLeft);
+                }
+            }, 1000);
+        }
+        
+        // Update phase counter
+        function updatePhaseCounter(time) {
+            circleText.textContent = `${breathingPhases[currentPhaseIndex].text} (${time})`;
+        }
+        
+        // Complete exercise
+        function completeExercise() {
+            clearInterval(timer);
+            clearInterval(phaseTimer);
+            
+            // Update UI
+            instructionText.textContent = 'Exercise Complete!';
+            breathingCircle.className = 'breathing-circle';
+            circleText.textContent = 'Great Job!';
+            
+            // Reset
+            setTimeout(function() {
+                stopExercise();
+            }, 3000);
+        }
+        
+        // Check if user is logged in and update UI accordingly
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            const userDropdown = document.querySelector('.user-dropdown');
+            const userName = document.getElementById('userName');
+            
+            if (token) {
+                userDropdown.style.display = 'block';
+                // Try to get user info
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user.name) {
+                    userName.textContent = user.name;
+                }
+            }
+            
+            // Logout functionality
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = 'landing.html';
+            });
+        });
+    </script>
+  </body>
+</html> 
