@@ -11,19 +11,25 @@ const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Conversations routes
+// Start a new conversation
+router.route('/conversation')
+  .post(protect, startConversation);
+
+// Send message to chatbot
+router.route('/message')
+  .post(protect, sendMessage);
+
+// Get conversation history
+router.route('/conversation/:conversationId')
+  .get(protect, getConversation);
+
+// Clear conversation
+router.route('/conversation/:conversationId/clear')
+  .post(protect, clearConversation);
+
+// Get all conversations
 router.route('/conversations')
   .get(protect, getConversations)
-  .post(protect, startConversation)
   .delete(protect, clearAllConversations);
-
-// Single conversation routes
-router.route('/conversations/:conversationId')
-  .get(protect, getConversation)
-  .delete(protect, clearConversation);
-
-// Message routes
-router.route('/conversations/:conversationId/messages')
-  .post(protect, sendMessage);
 
 module.exports = router; 

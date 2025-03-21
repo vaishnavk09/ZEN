@@ -6,6 +6,7 @@
     <title>Mood Tracker - Zen Mental Health Support App</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="js/api.js"></script>
+    <script src="js/moodDebug.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -108,9 +109,74 @@
                     <div class="text-center">
                         <button class="btn btn-warning" id="save-mood">Save Mood</button>
                     </div>
-                    <div class="mt-4">
-                        <h5>Your Mood History</h5>
-                        <canvas id="mood-chart" height="200"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mood Analysis Section -->
+        <section class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Mood Trends</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <select class="form-select" id="chart-period">
+                                <option value="7">Last 7 Days</option>
+                                <option value="14" selected>Last 14 Days</option>
+                                <option value="30">Last 30 Days</option>
+                                <option value="90">Last 3 Months</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="btn-group float-end" role="group">
+                                <button type="button" class="btn btn-outline-primary active" id="view-line">Line Chart</button>
+                                <button type="button" class="btn btn-outline-primary" id="view-bar">Bar Chart</button>
+                                <button type="button" class="btn btn-outline-primary" id="view-average">Weekly Average</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="mood-chart"></canvas>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Mood Statistics</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Average Mood:</span>
+                                        <span id="avg-mood">-</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Highest Mood:</span>
+                                        <span id="max-mood">-</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Lowest Mood:</span>
+                                        <span id="min-mood">-</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Mood Variance:</span>
+                                        <span id="mood-variance">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Mood Distribution</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="mood-distribution-chart" height="150"></canvas>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -221,6 +287,9 @@
         let moodEntries = [];
         let selectedMood = null;
         let moodChart = null;
+        let distributionChart = null;
+        let currentChartType = 'line';
+        let currentPeriod = 14;
         
         // Check if user is logged in and update UI accordingly
         document.addEventListener('DOMContentLoaded', function() {
@@ -241,6 +310,9 @@
                 
                 // Load mood entries
                 loadMoodEntries(token);
+                
+                // Initialize chart controls
+                initChartControls();
             } else {
                 // Redirect to login if not authenticated
                 window.location.href = 'login.html';
@@ -261,10 +333,12 @@
         
         // Initialize mood emoji selection
         function initMoodSelection() {
+            console.log("Initializing mood selection");
             const moodEmojis = document.querySelectorAll('.mood-emoji');
             
             moodEmojis.forEach(emoji => {
                 emoji.addEventListener('click', function() {
+                    console.log("Emoji selected:", this.getAttribute('data-mood'));
                     // Remove selected class from all emojis
                     moodEmojis.forEach(e => e.classList.remove('selected'));
                     
@@ -277,11 +351,152 @@
             });
         }
         
+        // Initialize chart controls
+        function initChartControls() {
+            // Period selector
+            document.getElementById('chart-period').addEventListener('change', function() {
+                currentPeriod = this.value === 'all' ? 999999 : parseInt(this.value);
+                updateCharts(moodEntries);
+            });
+            
+            // Chart type buttons
+            document.getElementById('view-line').addEventListener('click', function() {
+                document.querySelectorAll('#view-line, #view-bar, #view-average').forEach(
+                    btn => btn.classList.remove('active')
+                );
+                this.classList.add('active');
+                currentChartType = 'line';
+                updateCharts(moodEntries);
+            });
+            
+            document.getElementById('view-bar').addEventListener('click', function() {
+                document.querySelectorAll('#view-line, #view-bar, #view-average').forEach(
+                    btn => btn.classList.remove('active')
+                );
+                this.classList.add('active');
+                currentChartType = 'bar';
+                updateCharts(moodEntries);
+            });
+            
+            document.getElementById('view-average').addEventListener('click', function() {
+                document.querySelectorAll('#view-line, #view-bar, #view-average').forEach(
+                    btn => btn.classList.remove('active')
+                );
+                this.classList.add('active');
+                currentChartType = 'average';
+                updateCharts(moodEntries);
+            });
+        }
+        
+        // Helper function to group entries by week
+        function groupEntriesByWeek(entries) {
+            const weeks = {};
+            
+            entries.forEach(entry => {
+                const date = new Date(entry.date);
+                // Get week number (using year start)
+                const weekNumber = getWeekNumber(date);
+                const weekKey = `${date.getFullYear()}-W${weekNumber}`;
+                
+                if (!weeks[weekKey]) {
+                    weeks[weekKey] = {
+                        sum: 0,
+                        count: 0,
+                        label: `Week ${weekNumber}, ${date.getFullYear()}`
+                    };
+                }
+                
+                weeks[weekKey].sum += entry.mood;
+                weeks[weekKey].count++;
+            });
+            
+            // Calculate averages and format data for chart
+            const labels = [];
+            const data = [];
+            
+            Object.keys(weeks).sort().forEach(weekKey => {
+                const week = weeks[weekKey];
+                labels.push(week.label);
+                data.push(parseFloat((week.sum / week.count).toFixed(1)));
+            });
+            
+            return { labels, data };
+        }
+        
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+        
+        // Calculate mood statistics
+        function calculateMoodStats(entries) {
+            if (entries.length === 0) {
+                return {
+                    average: '-',
+                    max: '-',
+                    min: '-',
+                    variance: '-'
+                };
+            }
+            
+            const moodValues = entries.map(entry => entry.mood);
+            const sum = moodValues.reduce((a, b) => a + b, 0);
+            const avg = sum / moodValues.length;
+            const max = Math.max(...moodValues);
+            const min = Math.min(...moodValues);
+            
+            // Calculate variance
+            const squareDiffs = moodValues.map(value => {
+                const diff = value - avg;
+                return diff * diff;
+            });
+            const variance = squareDiffs.reduce((a, b) => a + b, 0) / moodValues.length;
+            
+            return {
+                average: avg.toFixed(1),
+                max,
+                min,
+                variance: variance.toFixed(2)
+            };
+        }
+        
+        // Update all charts and statistics
+        function updateCharts(entries) {
+            console.log("Updating charts with entries:", entries);
+            // Filter entries by selected period
+            let filteredEntries = entries;
+            if (currentPeriod !== 999999) {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - currentPeriod);
+                filteredEntries = entries.filter(entry => new Date(entry.date) >= cutoffDate);
+            }
+            
+            // Update statistics
+            const stats = calculateMoodStats(filteredEntries);
+            document.getElementById('avg-mood').textContent = stats.average === '-' ? '-' : `${stats.average} ${getMoodEmoji(Math.round(stats.average))}`;
+            document.getElementById('max-mood').textContent = stats.max === '-' ? '-' : `${stats.max} ${getMoodEmoji(stats.max)}`;
+            document.getElementById('min-mood').textContent = stats.min === '-' ? '-' : `${stats.min} ${getMoodEmoji(stats.min)}`;
+            document.getElementById('mood-variance').textContent = stats.variance;
+            
+            // Update main chart
+            updateMoodChart(filteredEntries);
+            
+            // Update distribution chart
+            updateDistributionChart(filteredEntries);
+        }
+        
         // Load mood entries from the API
         async function loadMoodEntries(token) {
             try {
+                console.log('Loading mood entries with token:', token);
                 const response = await window.mindfulmeAPI.mood.getMoods(token);
+                console.log('Mood entries response:', response);
+                
+                // IMPORTANT FIX: Ensure we have the correct data structure
                 moodEntries = response.data || [];
+                console.log('Parsed mood entries:', moodEntries);
                 
                 const moodEntriesTable = document.getElementById('mood-entries-table');
                 const noMoodEntriesMessage = document.getElementById('no-mood-entries-message');
@@ -311,14 +526,17 @@
                         entriesContainer.appendChild(row);
                     });
                     
-                    // Update chart
-                    updateMoodChart(moodEntries);
+                    // Force the charts to update with the correct data
+                    setTimeout(() => {
+                        console.log('Updating charts with entries:', moodEntries);
+                        updateCharts(moodEntries);
+                    }, 100);
                 } else {
                     moodEntriesTable.style.display = 'none';
                     noMoodEntriesMessage.style.display = 'block';
                     
-                    // Create empty chart
-                    updateMoodChart([]);
+                    // Create empty charts
+                    updateCharts([]);
                 }
             } catch (error) {
                 console.error('Error loading mood entries:', error);
@@ -336,13 +554,16 @@
             const notes = document.getElementById('mood-notes').value;
             
             try {
+                console.log('Saving mood entry with mood:', selectedMood);
                 const moodData = {
                     mood: selectedMood,
                     notes,
                     date: new Date().toISOString()
                 };
+                console.log('Mood data being sent:', moodData);
                 
                 const response = await window.mindfulmeAPI.mood.createMood(moodData, token);
+                console.log('Save mood response:', response);
                 
                 alert('Mood saved successfully!');
                 
@@ -359,8 +580,8 @@
             }
         }
         
-        // Delete a mood entry
-        async function deleteMoodEntry(entryId) {
+        // Delete a mood entry - make this function globally available
+        window.deleteMoodEntry = async function(entryId) {
             if (!confirm('Are you sure you want to delete this mood entry?')) {
                 return;
             }
@@ -383,71 +604,218 @@
             return emojis[mood - 1] || '❓';
         }
         
-        // Update mood chart
-        function updateMoodChart(entries) {
-            const ctx = document.getElementById('mood-chart').getContext('2d');
-            
-            // Destroy existing chart if it exists
-            if (moodChart) {
-                moodChart.destroy();
-            }
-            
-            // Prepare data for chart
-            const chartData = {
-                labels: [],
-                datasets: [{
-                    label: 'Mood Level',
-                    data: [],
-                    borderColor: '#ffc107',
-                    backgroundColor: 'rgba(255, 193, 7, 0.2)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            };
-            
-            // If we have entries, populate chart data
-            if (entries.length > 0) {
-                // Sort entries by date (oldest first for chart)
-                const sortedEntries = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Update mood distribution chart
+        function updateDistributionChart(entries) {
+            try {
+                console.log("Updating distribution chart with entries:", entries);
+                const ctx = document.getElementById('mood-distribution-chart').getContext('2d');
                 
-                // Take only the last 14 days for readability
-                const recentEntries = sortedEntries.slice(-14);
+                // Destroy existing chart if it exists
+                if (distributionChart) {
+                    distributionChart.destroy();
+                }
                 
-                // Add data points
-                recentEntries.forEach(entry => {
-                    const date = new Date(entry.date).toLocaleDateString();
-                    chartData.labels.push(date);
-                    chartData.datasets[0].data.push(entry.mood);
-                });
-            }
-            
-            // Create new chart
-            moodChart = new Chart(ctx, {
-                type: 'line',
-                data: chartData,
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            min: 1,
-                            max: 5,
-                            ticks: {
-                                stepSize: 1
-                            }
+                // Count occurrences of each mood
+                const moodCounts = [0, 0, 0, 0, 0]; // For moods 1-5
+                
+                if (entries && entries.length > 0) {
+                    entries.forEach(entry => {
+                        if (entry.mood >= 1 && entry.mood <= 5) {
+                            moodCounts[entry.mood - 1]++;
                         }
+                    });
+                }
+                
+                console.log("Mood counts for distribution:", moodCounts);
+                
+                // Create distribution chart
+                distributionChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['😢 Very Sad', '😕 Sad', '😐 Neutral', '🙂 Happy', '😄 Very Happy'],
+                        datasets: [{
+                            label: 'Number of Entries',
+                            data: moodCounts,
+                            backgroundColor: [
+                                'rgba(220, 53, 69, 0.7)',  // Red for very sad
+                                'rgba(255, 193, 7, 0.7)',  // Yellow/orange for sad
+                                'rgba(108, 117, 125, 0.7)', // Gray for neutral
+                                'rgba(40, 167, 69, 0.7)',  // Green for happy
+                                'rgba(0, 123, 255, 0.7)'   // Blue for very happy
+                            ],
+                            borderColor: [
+                                'rgb(220, 53, 69)',
+                                'rgb(255, 193, 7)',
+                                'rgb(108, 117, 125)',
+                                'rgb(40, 167, 69)',
+                                'rgb(0, 123, 255)'
+                            ],
+                            borderWidth: 1
+                        }]
                     },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    return `Mood: ${value}/5 ${getMoodEmoji(value)}`;
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
                                 }
                             }
                         }
                     }
+                });
+            } catch (error) {
+                console.error("Error updating distribution chart:", error);
+            }
+        }
+        
+        // Update mood chart
+        function updateMoodChart(entries) {
+            try {
+                console.log("Updating mood chart with entries:", entries);
+                const ctx = document.getElementById('mood-chart').getContext('2d');
+                
+                // Destroy existing chart if it exists
+                if (moodChart) {
+                    moodChart.destroy();
                 }
-            });
+                
+                // If no entries, create a placeholder chart
+                if (!entries || entries.length === 0) {
+                    moodChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: ['No data available'],
+                            datasets: [{
+                                label: 'Mood Level',
+                                data: [],
+                                borderColor: '#ffc107',
+                                backgroundColor: 'rgba(255, 193, 7, 0.2)'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    min: 1,
+                                    max: 5,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    return;
+                }
+                
+                // Different chart types
+                if (currentChartType === 'average') {
+                    // Weekly average chart
+                    const weeklyData = groupEntriesByWeek(entries);
+                    
+                    moodChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: weeklyData.labels,
+                            datasets: [{
+                                label: 'Weekly Average Mood',
+                                data: weeklyData.data,
+                                borderColor: '#6a5acd',
+                                backgroundColor: 'rgba(106, 90, 205, 0.2)',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    min: 1,
+                                    max: 5,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const value = context.raw;
+                                            return `Average Mood: ${value}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // Sort entries by date (oldest first for chart)
+                    const sortedEntries = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+                    console.log("Sorted entries for chart:", sortedEntries);
+                    
+                    // Prepare data for chart
+                    const chartData = {
+                        labels: sortedEntries.map(entry => new Date(entry.date).toLocaleDateString()),
+                        datasets: [{
+                            label: 'Mood Level',
+                            data: sortedEntries.map(entry => entry.mood),
+                            borderColor: '#6a5acd',
+                            backgroundColor: currentChartType === 'bar' ? 
+                                sortedEntries.map(entry => {
+                                    const mood = entry.mood;
+                                    if (mood <= 2) return 'rgba(220, 53, 69, 0.7)'; // Red for very sad/sad
+                                    if (mood === 3) return 'rgba(255, 193, 7, 0.7)'; // Yellow for neutral
+                                    return 'rgba(40, 167, 69, 0.7)'; // Green for happy/very happy
+                                }) : 
+                                'rgba(106, 90, 205, 0.2)',
+                            fill: currentChartType === 'line',
+                            tension: currentChartType === 'line' ? 0.4 : 0
+                        }]
+                    };
+                    
+                    console.log("Chart data:", chartData);
+                    
+                    // Create new chart
+                    moodChart = new Chart(ctx, {
+                        type: currentChartType,
+                        data: chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    min: 1,
+                                    max: 5,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const value = context.raw;
+                                            return `Mood: ${value}/5 ${getMoodEmoji(value)}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Error updating mood chart:", error);
+            }
         }
     </script>
   </body>

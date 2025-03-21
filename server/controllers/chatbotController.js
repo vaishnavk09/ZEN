@@ -24,25 +24,38 @@ let mentalHealthDataset = {
 };
 
 try {
-  const dataPath = path.join(__dirname, '../../client/public/data/kb.json');
+  // Use the dataset from the specified location
+  const dataPath = 'C:/Users/vaish/mindfulme-app/src/assets/KB.json';
+  
   if (fs.existsSync(dataPath)) {
-    const rawData = fs.readFileSync(dataPath, 'utf8');
-    // Try to parse the JSON, if it fails, use the default dataset
     try {
+      // Read the file with explicit UTF-8 encoding
+      let rawData = fs.readFileSync(dataPath, 'utf8');
+      
+      // Remove BOM if present and clean up non-standard characters
+      rawData = rawData.replace(/^\uFEFF/, '');
+      rawData = rawData.replace(/[\u200B-\u200D\uFEFF]/g, '');
+      rawData = rawData.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      
+      // Parse the JSON
       const parsedData = JSON.parse(rawData);
       if (parsedData && parsedData.intents) {
         mentalHealthDataset = parsedData;
         console.log('KB dataset loaded successfully in controller');
       }
-    } catch (parseError) {
-      console.error('Error parsing KB dataset:', parseError);
+    } catch (readError) {
+      console.error('Error reading KB dataset file:', readError);
+      // Continue with default dataset defined earlier
     }
   } else {
-    console.log('KB.json file not found, using default dataset');
+    console.log('KB.json file not found at specified path, using default dataset');
   }
 } catch (error) {
-  console.error('Error loading KB dataset in controller:', error);
+  console.error('Error in KB dataset loading process:', error);
 }
+
+// Keep track of conversation context
+const conversationContext = {};
 
 // Find best response from KB.json dataset
 const findBestResponse = (userMessage, conversationId) => {
@@ -53,11 +66,25 @@ const findBestResponse = (userMessage, conversationId) => {
   let matchedPattern = '';
   
   // Default response if no dataset or no match found
-  let botResponse = "I don't quite understand. Could you rephrase that?";
+  let botResponse = "I'm not sure I understand. Could you rephrase that?";
+  
+  // Initialize conversation context if it doesn't exist
+  if (!conversationContext[conversationId]) {
+    conversationContext[conversationId] = {
+      lastIntent: null,
+      mentionedTopics: new Set(),
+      messageCount: 0
+    };
+  }
+  
+  // Update message count
+  conversationContext[conversationId].messageCount++;
   
   if (mentalHealthDataset && mentalHealthDataset.intents) {
     // Break the user message into words for more accurate matching
-    const userWords = message.split(/\s+/).filter(word => word.length > 2);
+    const userWords = message.split(/\s+/)
+      .filter(word => word.length > 2)
+      .map(word => word.replace(/[.,?!;:'"()]/g, ''));
     
     // Track all intents with their match scores
     const scoredIntents = [];
@@ -99,7 +126,9 @@ const findBestResponse = (userMessage, conversationId) => {
         }
         else {
           // Check for word matches
-          const patternWords = patternLower.split(/\s+/).filter(word => word.length > 2);
+          const patternWords = patternLower.split(/\s+/)
+            .filter(word => word.length > 2)
+            .map(word => word.replace(/[.,?!;:'"()]/g, ''));
           
           // Score based on matching words
           for (const userWord of userWords) {
@@ -143,6 +172,25 @@ const findBestResponse = (userMessage, conversationId) => {
       if (intent.tag === "depression" && /depress|sad|down|hopeless|unhappy/i.test(message)) {
         intentScore += 20;
       }
+      if (intent.tag === "sleep" && /sleep|insomnia|awake|bed|night/i.test(message)) {
+        intentScore += 20;
+      }
+      if (intent.tag === "meditation" && /meditat|mindful|breathe|calm|focus/i.test(message)) {
+        intentScore += 20;
+      }
+      if (intent.tag === "self_care" && /self care|self-care|care for myself|taking care/i.test(message)) {
+        intentScore += 20;
+      }
+      
+      // Context-based boosting - if this is related to the previous intent
+      if (conversationContext[conversationId].lastIntent === intent.tag) {
+        intentScore += 15; // Boost for conversation continuity
+      }
+      
+      // If we've mentioned this topic before
+      if (conversationContext[conversationId].mentionedTopics.has(intent.tag)) {
+        intentScore += 10; // Boost for returning to a previously discussed topic
+      }
       
       // Add to scored intents if it has any score
       if (intentScore > 0) {
@@ -164,9 +212,19 @@ const findBestResponse = (userMessage, conversationId) => {
       confidence = topMatch.score;
       matchedPattern = topMatch.matchedPattern;
       
+      // Update conversation context
+      conversationContext[conversationId].lastIntent = bestMatch;
+      conversationContext[conversationId].mentionedTopics.add(bestMatch);
+      
       // Get random response from the matched intent
       const responses = topMatch.intent.responses;
       botResponse = responses[Math.floor(Math.random() * responses.length)];
+      
+      // For greeting after first message, add personalization
+      if (bestMatch === "greeting" && conversationContext[conversationId].messageCount > 1) {
+        botResponse = "Hello again! " + botResponse.replace(/^Hello!|Hi there!|Greetings!|Hi!/i, "");
+      }
+      
     } else {
       // If no good match, use fallback intent
       const fallbackIntent = mentalHealthDataset.intents.find(intent => intent.tag === "fallback");
@@ -342,66 +400,54 @@ exports.startConversation = async (req, res, next) => {
 };
 
 // @desc    Send message to chatbot and get response
-// @route   POST /api/chatbot/conversations/:conversationId/messages
+// @route   POST /api/chatbot/message
 // @access  Private
 exports.sendMessage = async (req, res, next) => {
   try {
-    const { conversationId } = req.params;
-    const { message } = req.body;
+    const { message, conversationId } = req.body;
     
     if (!message) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide a message'
+        error: 'Please provide a message'
       });
     }
     
-    // Create a new conversation if ID not provided
-    let actualConversationId = conversationId;
-    if (!actualConversationId || actualConversationId === 'new') {
-      actualConversationId = uuidv4();
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Conversation ID is required'
+      });
     }
     
     // Use mock data if MongoDB is skipped
     if (process.env.SKIP_MONGO === 'true') {
-      const now = new Date();
-      
-      // Create or update conversation
-      if (!mockConversations[actualConversationId]) {
-        mockConversations[actualConversationId] = {
-          user: req.user.id,
-          createdAt: now,
-          lastMessageAt: now
-        };
-      } else {
-        mockConversations[actualConversationId].lastMessageAt = now;
+      // Check if conversation exists
+      if (!mockConversations[conversationId]) {
+        return res.status(404).json({
+          success: false,
+          error: 'Conversation not found'
+        });
       }
       
-      // Save user message
-      const userMessage = {
-        _id: uuidv4(),
-        message,
-        isUserMessage: true,
-        user: req.user.id,
-        conversationId: actualConversationId,
-        createdAt: now
-      };
+      // Get user message
+      const userMessage = message;
       
-      mockMessages.push(userMessage);
-      
-      // Generate bot response
-      const { response, intent, confidence, matchedPattern } = findBestResponse(message, actualConversationId);
+      // Generate a bot response
+      const botResponse = findBestResponse(userMessage, conversationId);
+      const intent = botResponse.intent || 'unknown';
+      const confidence = botResponse.confidence || 0;
       
       // Save bot response
       const botMessage = {
         _id: uuidv4(),
-        message: response,
+        message: botResponse.response,
         isUserMessage: false,
         user: req.user.id,
-        conversationId: actualConversationId,
-        matchedPattern: matchedPattern,
+        conversationId,
+        matchedPattern: botResponse.matchedPattern,
         confidence: confidence,
-        createdAt: new Date(now.getTime() + 1000) // 1 second after user message
+        createdAt: new Date()
       };
       
       mockMessages.push(botMessage);
@@ -409,7 +455,7 @@ exports.sendMessage = async (req, res, next) => {
       return res.status(200).json({
         success: true,
         data: {
-          conversationId: actualConversationId,
+          conversationId,
           userMessage,
           botMessage,
           intent,
@@ -423,18 +469,18 @@ exports.sendMessage = async (req, res, next) => {
       message,
       isUserMessage: true,
       user: req.user.id,
-      conversationId: actualConversationId
+      conversationId
     });
     
     // Generate bot response
-    const { response, intent, confidence, matchedPattern } = findBestResponse(message, actualConversationId);
+    const { response, intent, confidence, matchedPattern } = findBestResponse(message, conversationId);
     
     // Save bot response
     const botMessage = await ChatMessage.create({
       message: response,
       isUserMessage: false,
       user: req.user.id,
-      conversationId: actualConversationId,
+      conversationId,
       matchedPattern: matchedPattern,
       confidence: confidence
     });
@@ -442,7 +488,7 @@ exports.sendMessage = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        conversationId: actualConversationId,
+        conversationId,
         userMessage,
         botMessage,
         intent,
