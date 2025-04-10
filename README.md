@@ -30,6 +30,7 @@ The project is organized into two main directories:
 - Vaishnavi Kharat
 - Rihan Shaikh
 - Sarvesh Salunkhe
+- Manodnya Medhe
 
 ## Getting Started
 
