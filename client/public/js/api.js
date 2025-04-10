@@ -1,5 +1,5 @@
 // API client for Mindful Me backend
-const API_URL = 'http://localhost:5001/api';
+const API_URL = 'http://localhost:3001/api';
 
 // Helper function for making API requests
 async function fetchAPI(endpoint, method = 'GET', data = null, token = null) {

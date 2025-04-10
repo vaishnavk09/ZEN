@@ -2,6 +2,8 @@ const ChatMessage = require('../models/ChatMessage');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const asyncHandler = require('express-async-handler');
+const axios = require('axios');
 
 // Mock data for when MongoDB is skipped
 const mockConversations = {};
@@ -419,82 +421,82 @@ exports.sendMessage = async (req, res, next) => {
         error: 'Conversation ID is required'
       });
     }
-    
-    // Use mock data if MongoDB is skipped
-    if (process.env.SKIP_MONGO === 'true') {
-      // Check if conversation exists
-      if (!mockConversations[conversationId]) {
-        return res.status(404).json({
-          success: false,
-          error: 'Conversation not found'
-        });
-      }
-      
-      // Get user message
-      const userMessage = message;
-      
-      // Generate a bot response
-      const botResponse = findBestResponse(userMessage, conversationId);
-      const intent = botResponse.intent || 'unknown';
-      const confidence = botResponse.confidence || 0;
-      
-      // Save bot response
-      const botMessage = {
+
+    // Use the LLM service regardless of MongoDB setting
+    try {
+      // Create a user message object
+      const userMessageObj = {
         _id: uuidv4(),
-        message: botResponse.response,
-        isUserMessage: false,
+        message: message,
+        isUserMessage: true,
         user: req.user.id,
         conversationId,
-        matchedPattern: botResponse.matchedPattern,
-        confidence: confidence,
         createdAt: new Date()
       };
       
+      // Add to mock messages
+      mockMessages.push(userMessageObj);
+      
+      // Hardcode the Python service URL
+      const pythonServiceUrl = 'http://localhost:8000';
+      console.log(`Connecting to Python service at: ${pythonServiceUrl}/chat`);
+      
+      let botResponse;
+      try {
+        // Direct API call to the Python service
+        const response = await axios.post(`${pythonServiceUrl}/chat`, { message });
+        botResponse = response.data.response;
+        console.log('Successfully received response from Python service');
+      } catch (apiError) {
+        console.error(`API call failed: ${apiError.message}`);
+        // Fallback response if API call fails
+        botResponse = "I apologize, but I'm having trouble connecting to my reasoning service right now. Let me suggest a breathing exercise to help in the meantime: Try box breathing - inhale for 4 counts, hold for 4, exhale for 4, hold for 4, and repeat. This can help reduce anxiety and stress.";
+      }
+      
+      // Add breathing exercises link if relevant
+      const breathingExerciseKeywords = [
+        'breathing exercise', 'breathing exercises', 'deep breath', 'deep breathing',
+        'breathe deeply', 'breath work', 'diaphragmatic breathing', 'breath technique',
+        'breathing technique', 'mindful breathing', 'calm breathing', 'take a deep breath'
+      ];
+      
+      const containsBreathingExercise = breathingExerciseKeywords.some(keyword => 
+        botResponse.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      if (containsBreathingExercise) {
+        botResponse += "\n\nI notice we're talking about breathing exercises. Would you like to try one of our guided breathing exercises? [Click here to access our breathing exercises](/breathing-exercises)";
+      }
+      
+      // Create a bot message object
+      const botMessage = {
+        _id: uuidv4(),
+        message: botResponse,
+        isUserMessage: false,
+        user: req.user.id,
+        conversationId,
+        createdAt: new Date()
+      };
+      
+      // Add to mock messages
       mockMessages.push(botMessage);
       
       return res.status(200).json({
         success: true,
         data: {
           conversationId,
-          userMessage,
+          userMessage: userMessageObj,
           botMessage,
-          intent,
-          confidence
+          llmResponse: true
         }
       });
+    } catch (error) {
+      console.error(`General error in sendMessage: ${error.message}`);
+      return res.status(500).json({
+        success: false,
+        error: 'Server error processing message'
+      });
     }
-    
-    // Save user message
-    const userMessage = await ChatMessage.create({
-      message,
-      isUserMessage: true,
-      user: req.user.id,
-      conversationId
-    });
-    
-    // Generate bot response
-    const { response, intent, confidence, matchedPattern } = findBestResponse(message, conversationId);
-    
-    // Save bot response
-    const botMessage = await ChatMessage.create({
-      message: response,
-      isUserMessage: false,
-      user: req.user.id,
-      conversationId,
-      matchedPattern: matchedPattern,
-      confidence: confidence
-    });
-    
-    res.status(200).json({
-      success: true,
-      data: {
-        conversationId,
-        userMessage,
-        botMessage,
-        intent,
-        confidence
-      }
-    });
   } catch (error) {
     next(error);
   }
@@ -580,4 +582,59 @@ exports.clearAllConversations = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
+
+// @desc    Initialize the LLM service
+// @route   POST /api/chatbot/initialize
+// @access  Private
+const initializeLLM = asyncHandler(async (req, res) => {
+    try {
+        const response = await axios.post(`${PYTHON_SERVICE_URL}/initialize`);
+        res.status(200).json(response.data);
+    } catch (error) {
+        res.status(500);
+        throw new Error('Error initializing LLM service: ' + error.message);
+    }
+});
+
+// @desc    Process chat message and get response from LLM
+// @route   POST /api/chatbot
+// @access  Private
+const processChatMessage = asyncHandler(async (req, res) => {
+    const { message } = req.body;
+
+    if (!message) {
+        res.status(400);
+        throw new Error('Please provide a message');
+    }
+
+    try {
+        console.log(`Sending request to Python LLM service at ${PYTHON_SERVICE_URL}/chat`);
+        console.log(`Message: ${message}`);
+        
+        const response = await axios.post(`${PYTHON_SERVICE_URL}/chat`, {
+            message
+        });
+        
+        console.log(`Received response from Python LLM service: ${JSON.stringify(response.data)}`);
+        
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Error processing chat message:', error);
+        res.status(500);
+        throw new Error('Error processing chat message: ' + (error.response?.data?.message || error.message));
+    }
+});
+
+module.exports = {
+    getConversation: exports.getConversation,
+    getConversations: exports.getConversations,
+    startConversation: exports.startConversation,
+    sendMessage: exports.sendMessage,
+    clearConversation: exports.clearConversation,
+    clearAllConversations: exports.clearAllConversations,
+    initializeLLM,
+    processChatMessage
 }; 

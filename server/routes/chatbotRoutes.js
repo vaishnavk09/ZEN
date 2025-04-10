@@ -1,35 +1,32 @@
 const express = require('express');
-const {
-  getConversation,
-  getConversations,
-  startConversation,
-  sendMessage,
-  clearConversation,
-  clearAllConversations
-} = require('../controllers/chatbotController');
-const { protect } = require('../middleware/auth');
+const chatbotController = require('../controllers/chatbotController');
+const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 // Start a new conversation
 router.route('/conversation')
-  .post(protect, startConversation);
+  .post(protect, chatbotController.startConversation);
 
 // Send message to chatbot
 router.route('/message')
-  .post(protect, sendMessage);
+  .post(protect, chatbotController.sendMessage);
 
 // Get conversation history
 router.route('/conversation/:conversationId')
-  .get(protect, getConversation);
+  .get(protect, chatbotController.getConversation);
 
 // Clear conversation
 router.route('/conversation/:conversationId/clear')
-  .post(protect, clearConversation);
+  .post(protect, chatbotController.clearConversation);
 
 // Get all conversations
 router.route('/conversations')
-  .get(protect, getConversations)
-  .delete(protect, clearAllConversations);
+  .get(protect, chatbotController.getConversations)
+  .delete(protect, chatbotController.clearAllConversations);
+
+// Direct LLM routes
+router.route('/initialize')
+  .post(protect, chatbotController.initializeLLM);
 
 module.exports = router; 

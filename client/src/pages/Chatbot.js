@@ -12,7 +12,8 @@ import {
   Card,
   CardContent,
   Grid,
-  Tooltip
+  Tooltip,
+  Link
 } from '@mui/material';
 import { 
   Send as SendIcon, 
@@ -26,6 +27,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSpring, animated } from 'react-spring';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { Link as RouterLink } from 'react-router-dom';
 
 // Suggested questions for the user
 const suggestedQuestions = [
@@ -201,6 +203,92 @@ const Chatbot = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
   
+  // Replace the existing renderMessageWithLinks function with this improved version
+  const renderMessageWithLinks = (message) => {
+    // Split the message into lines
+    return message.split('\n').map((line, lineIndex) => {
+      // Check if the line contains links to breathing exercises
+      if (line.includes('/breathing-exercises') || line.includes('breathing exercises')) {
+        // Split the line at the link
+        const parts = line.split(/(\[Click here to access our breathing exercises\](?:\/breathing-exercises\))?)/g);
+        
+        return (
+          <React.Fragment key={`line-${lineIndex}`}>
+            {parts.map((part, partIndex) => {
+              if (part.includes('Click here to access our breathing exercises')) {
+                return (
+                  <Link 
+                    key={`link-${lineIndex}-${partIndex}`} 
+                    to="/breathing"
+                    component={RouterLink}
+                    sx={{ 
+                      color: 'primary.main', 
+                      fontWeight: 'bold',
+                      textDecoration: 'none',
+                      '&:hover': {
+                        textDecoration: 'underline'
+                      }
+                    }}
+                  >
+                    Click here to access our breathing exercises
+                  </Link>
+                );
+              }
+              return part;
+            })}
+            {lineIndex < message.split('\n').length - 1 && <br />}
+          </React.Fragment>
+        );
+      }
+      
+      // Process regular markdown links
+      const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+      let lastIndex = 0;
+      const elements = [];
+      let match;
+      
+      // Find all markdown links in the line
+      while ((match = linkRegex.exec(line)) !== null) {
+        // Add text before the link
+        if (match.index > lastIndex) {
+          elements.push(line.substring(lastIndex, match.index));
+        }
+        
+        // Add the link component
+        elements.push(
+          <Link 
+            key={`link-${lineIndex}-${match.index}`}
+            href={match[2]} 
+            color="primary"
+            sx={{ textDecoration: 'underline' }}
+          >
+            {match[1]}
+          </Link>
+        );
+        
+        lastIndex = match.index + match[0].length;
+      }
+      
+      // Add remaining text
+      if (lastIndex < line.length) {
+        elements.push(line.substring(lastIndex));
+      }
+      
+      // If no links were found, just return the line
+      if (elements.length === 0) {
+        elements.push(line);
+      }
+      
+      // Return the line with links if present, with line breaks
+      return (
+        <React.Fragment key={`line-${lineIndex}`}>
+          {elements}
+          {lineIndex < message.split('\n').length - 1 && <br />}
+        </React.Fragment>
+      );
+    });
+  };
+  
   return (
     <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
       <Grid container spacing={3}>
@@ -271,7 +359,9 @@ const Chatbot = () => {
                         position: 'relative'
                       }}
                     >
-                      <Typography variant="body1">{msg.message}</Typography>
+                      <Typography variant="body1">
+                        {renderMessageWithLinks(msg.message)}
+                      </Typography>
                       <Typography 
                         variant="caption" 
                         sx={{ 

@@ -95,7 +95,16 @@ class MindfulChatbot {
   addMessage(message, sender) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `chat-message ${sender === 'user' ? 'user-message' : 'bot-message'}`;
-    messageDiv.innerHTML = `<p>${message}</p>`;
+    
+    // Process the message to render markdown links
+    let processedMessage = message;
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    processedMessage = processedMessage.replace(linkRegex, '<a href="$2" class="chat-link">$1</a>');
+    
+    // Process line breaks
+    processedMessage = processedMessage.replace(/\n/g, '<br>');
+    
+    messageDiv.innerHTML = `<p>${processedMessage}</p>`;
     this.chatContainer.appendChild(messageDiv);
     
     // Scroll to bottom
