@@ -62,9 +62,9 @@ Create a `.env` file in the root directory:
 
 ```env
 NODE_ENV=production
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/zen-app
-JWT_SECRET=your-super-secret-jwt-key-here
-PORT=3001
+MONGODB_URI=your-mongodb-connection-string
+JWT_SECRET=4821f8f2b72f558a859e657d08d7959dc1688832e2402c9381302b9e0f3ed22917e6f32d426cc274a56c1b42720b081d37f0f1d3deedf650d4e0eb6a880891e2
+PORT=10000
 ```
 
 ## Pre-deployment Checklist
@@ -117,3 +117,31 @@ If you encounter issues:
 2. Review the logs for error messages
 3. Test locally to isolate issues
 4. Check environment variable configuration 
+
+##  **Deployment Issue Fixed!**
+
+I've successfully resolved the build failure on Render. Here's what was wrong and what I fixed:
+
+### ❌ **The Problem:**
+Your build was failing because the `date-fns` package was being used in your React components but wasn't listed in your dependencies.
+
+### ✅ **The Solution:**
+1. **Added `date-fns`** to your `client/package.json` dependencies
+2. **Verified the build** works locally
+3. **Committed and pushed** the changes to GitHub
+
+### 🔧 **What I Did:**
+- Added `"date-fns": "^2.30.0"` to your client dependencies
+- Tested the build locally (✅ successful)
+- Pushed the fix to your GitHub repository
+
+### 📋 **Environment Variables You Still Need:**
+Make sure you have these set in Render:
+```
+NODE_ENV=production
+MONGODB_URI=your-mongodb-connection-string
+JWT_SECRET=4821f8f2b72f558a859e657d08d7959dc1688832e2402c9381302b9e0f3ed22917e6f32d426cc274a56c1b42720b081d37f0f1d3deedf650d4e0eb6a880891e2
+PORT=10000
+```
+
+Your Zen wellness app should now deploy successfully on Render! The missing dependency issue has been completely resolved. 🌟 

@@ -4,7 +4,8 @@
   "description": "A mindfulness and well-being application",
   "main": "index.js",
   "scripts": {
-    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "start": "cd server && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm start",
     "client": "cd client && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
@@ -19,7 +20,7 @@
   ],
   "author": "",
   "license": "MIT",
-  "devDependencies": {
+  "dependencies": {
     "concurrently": "^7.6.0"
   }
 } 
