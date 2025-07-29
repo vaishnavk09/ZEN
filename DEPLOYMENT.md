@@ -145,3 +145,54 @@ PORT=10000
 ```
 
 Your Zen wellness app should now deploy successfully on Render! The missing dependency issue has been completely resolved. 🌟 
+
+Error: bad auth : authentication failed
+
+means your app is able to reach your MongoDB Atlas cluster, but the **username or password in your connection string is incorrect**.
+
+---
+
+## How to Fix "bad auth : authentication failed"
+
+### 1. **Check Your MongoDB Atlas Database User**
+
+1. **Log in to [MongoDB Atlas](https://cloud.mongodb.com/)**.
+2. Go to your **Cluster**.
+3. In the left sidebar, click **Database Access**.
+4. You’ll see a list of database users.  
+   - Make sure you have a user with the correct **username**.
+   - If you forgot the password, you can reset it here.
+
+---
+
+### 2. **Update Your Connection String**
+
+1. In Atlas, click **Database** > **Connect** > **Connect your application**.
+2. Copy the connection string template.
+3. Replace `<username>` and `<password>` with the correct values from your Database Access page.
+   - Example:  
+     ```
+     mongodb+srv://myuser:mypassword@cluster0.xxxxx.mongodb.net/mydatabase?retryWrites=true&w=majority
+     ```
+4. In your Render dashboard, go to your service’s **Environment** tab.
+5. Update the environment variable (often called `MONGODB_URI` or similar) with the correct connection string.
+
+---
+
+### 3. **Redeploy or Restart Your Service**
+
+- After updating the environment variable, redeploy or restart your Render service.
+
+---
+
+## **Summary Checklist**
+
+- [ ] Confirm the database user exists in Atlas.
+- [ ] Reset the password if you’re unsure.
+- [ ] Update your connection string in Render’s environment variables.
+- [ ] Redeploy/restart your service.
+
+---
+
+**If you want, paste your (redacted) connection string here and I’ll check it for errors (remove your password before posting).  
+If you get stuck, let me know which step and I’ll guide you through it!** 

@@ -23,7 +23,7 @@ exports.protect = async (req, res, next) => {
 
   try {
     // Skip MongoDB check in development mode
-    if (process.env.SKIP_MONGO === 'true') {
+    if (process.env.SKIP_MONGO === 'false') {
       // For development without MongoDB, we'll use a mock user
       if (token === 'mock-jwt-token-for-development') {
         req.user = {

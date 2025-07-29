@@ -29,8 +29,8 @@ The build was successful and all dependencies are installed.
 In Render dashboard, add these environment variables:
 ```
 NODE_ENV=production
-MONGODB_URI=your-mongodb-connection-string
-JWT_SECRET=your-random-secret-key
+MONGODB_URI=mongodb+srv://vaishnavk9420:Vkedar@9890@zencluster.314lae1.mongodb.net/
+JWT_SECRET=56b3b6dd1990bf87f1fd9c4c26a148b02df91fd227e9659f985d7df6aefdc360ba6ad7e691ac5b2c4f6bf7930e8dc77c3e47a150ebd996ef99357fed25b61e2d
 PORT=10000
 ```
 
@@ -82,3 +82,62 @@ Click "Create Web Service" and wait for deployment.
 ✅ Responsive design  
 
 Your Zen wellness app is ready to help people with their mental health journey! 🌟 
+
+---
+
+## **How to Fix This**
+
+### 1. **Check if Dependencies Are Installed**
+- Make sure you have a `RUN npm install` (or `RUN yarn install`) **before** `RUN npm run build` in your Dockerfile.
+- If you try to build before installing dependencies, the build will fail.
+
+**Example Dockerfile section:**
+```dockerfile
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+```
+
+---
+
+### 2. **Check Your `build` Script**
+- Open your `package.json` and make sure you have a `build` script defined:
+  ```json
+  "scripts": {
+    "build": "react-scripts build" // or whatever your build command is
+  }
+  ```
+- If there is no `build` script, `npm run build` will fail.
+
+---
+
+### 3. **Check for Missing Build Tools**
+- If your build uses tools like `react-scripts`, `next`, or `tsc`, make sure they are in your `dependencies` or `devDependencies`.
+
+---
+
+### 4. **Check the Dockerfile Syntax**
+- The `--mount=type=cache...` syntax is only supported in Docker **BuildKit**. Make sure Railway supports BuildKit, or try removing the `--mount=type=cache...` part for a simpler build.
+
+**Try changing:**
+```dockerfile
+RUN --mount=type=cache,id=s/898f684f-bd33-4e2a-891d-e18c228d8087-node_modules/cache,target=/app/node_modules/.cache npm run build
+```
+**to:**
+```dockerfile
+RUN npm run build
+```
+
+---
+
+## **Summary Checklist**
+
+- [ ] `RUN npm install` comes before `RUN npm run build`
+- [ ] `build` script exists in `package.json`
+- [ ] All build tools are installed
+- [ ] Remove advanced Docker cache mount if not needed
+
+---
+
+**Would you like to share your Dockerfile and `package.json`? I can review them and give you the exact fix!** 

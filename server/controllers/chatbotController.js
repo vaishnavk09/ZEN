@@ -388,6 +388,7 @@ exports.startConversation = async (req, res, next) => {
       matchedPattern: "greeting",
       confidence: 100
     });
+    console.log('ChatMessage saved to MongoDB:', botMessage);
     
     res.status(201).json({
       success: true,
@@ -424,62 +425,50 @@ exports.sendMessage = async (req, res, next) => {
 
     // Use the LLM service regardless of MongoDB setting
     try {
-      // Create a user message object
-      const userMessageObj = {
-        _id: uuidv4(),
+      // Save user message to MongoDB
+      const userMessageObj = await ChatMessage.create({
         message: message,
         isUserMessage: true,
         user: req.user.id,
         conversationId,
         createdAt: new Date()
-      };
-      
-      // Add to mock messages
-      mockMessages.push(userMessageObj);
+      });
+      console.log('User message saved to MongoDB:', userMessageObj);
       
       // Hardcode the Python service URL
       const pythonServiceUrl = 'http://localhost:8000';
       console.log(`Connecting to Python service at: ${pythonServiceUrl}/chat`);
       
       let botResponse;
+      let intent; // To store the intent from the LLM/KB
       try {
         // Direct API call to the Python service
         const response = await axios.post(`${pythonServiceUrl}/chat`, { message });
         botResponse = response.data.response;
+        intent = response.data.intent; // Assuming the LLM service returns intent
         console.log('Successfully received response from Python service');
       } catch (apiError) {
         console.error(`API call failed: ${apiError.message}`);
         // Fallback response if API call fails
         botResponse = "I apologize, but I'm having trouble connecting to my reasoning service right now. Let me suggest a breathing exercise to help in the meantime: Try box breathing - inhale for 4 counts, hold for 4, exhale for 4, hold for 4, and repeat. This can help reduce anxiety and stress.";
+        intent = "fallback"; // Default intent if API call fails
       }
       
       // Add breathing exercises link if relevant
-      const breathingExerciseKeywords = [
-        'breathing exercise', 'breathing exercises', 'deep breath', 'deep breathing',
-        'breathe deeply', 'breath work', 'diaphragmatic breathing', 'breath technique',
-        'breathing technique', 'mindful breathing', 'calm breathing', 'take a deep breath'
-      ];
-      
-      const containsBreathingExercise = breathingExerciseKeywords.some(keyword => 
-        botResponse.toLowerCase().includes(keyword.toLowerCase())
-      );
-      
-      if (containsBreathingExercise) {
-        botResponse += "\n\nI notice we're talking about breathing exercises. Would you like to try one of our guided breathing exercises? [Click here to access our breathing exercises](/breathing-exercises)";
+      const breathingAdviceIntents = ['anxiety', 'panic', 'stress', 'overwhelmed'];
+      if (breathingAdviceIntents.includes(intent)) {
+        botResponse += "\n\nI notice you're feeling anxious or stressed. Would you like to try one of our guided breathing exercises? [Click here to access our breathing exercises](/breathing-exercises)";
       }
       
-      // Create a bot message object
-      const botMessage = {
-        _id: uuidv4(),
+      // Save bot message to MongoDB
+      const botMessage = await ChatMessage.create({
         message: botResponse,
         isUserMessage: false,
         user: req.user.id,
         conversationId,
         createdAt: new Date()
-      };
-      
-      // Add to mock messages
-      mockMessages.push(botMessage);
+      });
+      console.log('Bot message saved to MongoDB:', botMessage);
       
       return res.status(200).json({
         success: true,
@@ -552,7 +541,7 @@ exports.clearConversation = async (req, res, next) => {
 exports.clearAllConversations = async (req, res, next) => {
   try {
     // Use mock data if MongoDB is skipped
-    if (process.env.SKIP_MONGO === 'true') {
+    if (process.env.SKIP_MONGO === 'false') {
       // Remove all user's conversations
       Object.keys(mockConversations).forEach(convId => {
         if (mockConversations[convId].user === req.user.id) {
